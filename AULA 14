@@ -1,0 +1,106 @@
+AULA 14
+
+-- exercicios
+
+
+--1 crie uma trigger que atualiza a quantidade de projetos da tbl_departamentos caso um projeto for deletado
+
+
+CREATE OR REPLACE FUNCTION atualizar_qtde_projetos() 
+RETURNS TRIGGER AS $$
+BEGIN
+ 
+    UPDATE tbl_departamentos
+    SET qtde_projetos = qtde_projetos - 1
+    WHERE cod_departamento = OLD.cod_departamento;
+    
+ 
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trigger_atualizar_qtde_projetos
+AFTER DELETE ON tbl_projetos
+FOR EACH ROW
+EXECUTE FUNCTION atualizar_qtde_projetos();
+
+
+--2 crie uma trigger que atualiza a quantidade de projetos da tbl_departamentos caso um novo projeto for adicionado
+
+
+CREATE OR REPLACE FUNCTION atualizar_qtde_projetos_adicao() 
+RETURNS TRIGGER AS $$
+BEGIN
+
+    UPDATE tbl_departamentos
+    SET qtde_projetos = qtde_projetos + 1
+    WHERE cod_departamento = NEW.cod_departamento;
+    
+  
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trigger_atualizar_qtde_projetos_adicao
+AFTER INSERT ON tbl_projetos
+FOR EACH ROW
+EXECUTE FUNCTION atualizar_qtde_projetos_adicao();
+
+
+--3 a) Crie uma tabela chamada tbl_empregado_historico_salario com as colunas cod_empregado e salario e data
+--  b) crie uma trigger que salva o salario atual de um empregado toda vez que seu salario for atualizado
+-- dica: use a funcao now() para salvar a data
+
+drop table tbl_empregado_historico_salario 
+
+CREATE TABLE tbl_empregado_historico_salario (
+    cod_empregado INT NOT NULL,
+    salario REAL NOT NULL,
+    data TIMESTAMP NOT NULL DEFAULT now(),
+    PRIMARY KEY (cod_empregado, data),
+    FOREIGN KEY (cod_empregado) REFERENCES tbl_empregados(cod_empregado)
+);
+
+
+CREATE OR REPLACE FUNCTION salvar_historico_salario() 
+RETURNS TRIGGER AS $$
+BEGIN
+    
+    INSERT INTO tbl_empregado_historico_salario (cod_empregado, salario, data)
+    VALUES (NEW.cod_empregado, NEW.salario, now());
+      
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_salvar_historico_salario
+AFTER UPDATE OF salario ON tbl_empregados
+FOR EACH ROW
+EXECUTE FUNCTION salvar_historico_salario();
+
+
+--4 a) crie uma coluna chamada data_atualizacao na tbl_empregados do tipo TIMESTAMP
+-- b) crie uma trigger que toda vez que os dados do empregado forem atualizados, que essa data tambem seja atualizada. 
+
+
+ALTER TABLE tbl_empregados
+ADD COLUMN data_atualizacao TIMESTAMP DEFAULT now();
+
+CREATE OR REPLACE FUNCTION atualizar_data_atualizacao() 
+RETURNS TRIGGER AS $$
+BEGIN
+  
+    NEW.data_atualizacao = now();
+    
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trigger_atualizar_data_atualizacao
+BEFORE UPDATE ON tbl_empregados
+FOR EACH ROW
+EXECUTE FUNCTION atualizar_data_atualizacao();
